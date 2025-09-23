@@ -1,0 +1,1914 @@
+openapi: 3.0.3
+info:
+  title: IntakeQ API
+  description: |
+    The IntakeQ API provides comprehensive endpoints for managing appointments, clients, invoices, notes, and questionnaires.
+    
+    **Rate Limits**: Standard PracticeQ subscription includes 10 API requests/minute, max 500/day.
+    
+    **Authentication**: All requests require an API key in the X-Auth-Key header.
+    
+    **Base URL**: https://intakeq.com/api/v1/
+  version: 1.0.0
+  contact:
+    name: IntakeQ Support
+    url: https://support.intakeq.com
+  license:
+    name: IntakeQ Terms of Service
+    url: https://intakeq.com/terms
+
+servers:
+  - url: https://intakeq.com/api/v1
+    description: Production server
+
+security:
+  - ApiKeyAuth: []
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-Auth-Key
+      description: API key for authentication
+
+  schemas:
+    # Appointment Schemas
+    Appointment:
+      type: object
+      properties:
+        Id:
+          type: string
+          description: The ID of the appointment
+        ClientName:
+          type: string
+          description: The name of the client
+        ClientEmail:
+          type: string
+          format: email
+          description: The email of the client
+        ClientPhone:
+          type: string
+          description: The client's phone number
+        ClientDateOfBirth:
+          type: string
+          format: date
+          description: Client's date of birth
+        ClientId:
+          type: integer
+          description: The client's ID assigned by IntakeQ
+        Status:
+          type: string
+          enum: [Confirmed, WaitingConfirmation, Declined, Canceled, Missed]
+          description: The appointment status
+        StartDate:
+          type: integer
+          format: int64
+          description: When the appointment is scheduled for in Unix timestamp
+        EndDate:
+          type: integer
+          format: int64
+          description: When the appointment ends in Unix timestamp
+        Duration:
+          type: integer
+          description: Appointment duration in minutes
+        ServiceName:
+          type: string
+          description: The name of the service
+        ServiceId:
+          type: string
+          description: The ID of the service
+        LocationName:
+          type: string
+          description: The name of the location
+        LocationId:
+          type: string
+          description: The ID of the location
+        PractitionerName:
+          type: string
+          description: The name of the practitioner
+        PractitionerEmail:
+          type: string
+          format: email
+          description: The email of the practitioner
+        PractitionerId:
+          type: string
+          description: The ID of the practitioner
+        Price:
+          type: number
+          format: float
+          description: The appointment price
+        IntakeId:
+          type: string
+          nullable: true
+          description: Associated intake form ID
+        DateCreated:
+          type: integer
+          format: int64
+          description: When the appointment was created in Unix timestamp
+        BookedByClient:
+          type: boolean
+          description: True if booked by client, false if by staff
+        CreatedBy:
+          type: string
+          description: Name of person who created the appointment
+        StartDateIso:
+          type: string
+          format: date-time
+          description: Start date in ISO format
+        EndDateIso:
+          type: string
+          format: date-time
+          description: End date in ISO format
+        StartDateLocal:
+          type: string
+          format: date-time
+          description: Start date in local time
+        EndDateLocal:
+          type: string
+          format: date-time
+          description: End date in local time
+        StartDateLocalFormatted:
+          type: string
+          description: Formatted start date string
+        InvoiceId:
+          type: string
+          nullable: true
+          description: Associated invoice ID
+        InvoiceNumber:
+          type: integer
+          nullable: true
+          description: Associated invoice number
+        ClientNote:
+          type: string
+          nullable: true
+          description: Note from client
+        PractitionerNote:
+          type: string
+          nullable: true
+          description: Note from practitioner
+        TelehealthInfo:
+          $ref: '#/components/schemas/TelehealthInfo'
+        Procedures:
+          type: array
+          items:
+            $ref: '#/components/schemas/Procedure'
+        AttendanceConfirmationResponse:
+          type: string
+          enum: [None, Confirmed, Cancelled]
+          description: Attendance confirmation response
+        ReminderType:
+          type: string
+          enum: [Sms, Email, Voice, OptOut]
+          description: Reminder type for the appointment
+        CustomFields:
+          type: array
+          items:
+            $ref: '#/components/schemas/CustomField'
+        SessionStart:
+          type: integer
+          format: int64
+          nullable: true
+          description: Session start timestamp
+        SessionEnd:
+          type: integer
+          format: int64
+          nullable: true
+          description: Session end timestamp
+        ExternalClientId:
+          type: string
+          nullable: true
+          description: External client ID
+        ExternalPractitionerId:
+          type: string
+          nullable: true
+          description: External practitioner ID
+        ExternalServiceId:
+          type: string
+          nullable: true
+          description: External service ID
+        LastModified:
+          type: integer
+          format: int64
+          description: Last modification timestamp
+        PlaceOfService:
+          type: string
+          description: Place of service code
+        AdditionalClients:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdditionalClient'
+        FullCancellationReason:
+          type: string
+          nullable: true
+          description: Full cancellation reason
+        CancellationReasonNote:
+          type: string
+          nullable: true
+          description: Cancellation reason note
+        CancellationDate:
+          type: string
+          format: date-time
+          nullable: true
+          description: Cancellation date
+        AppointmentPackageId:
+          type: string
+          nullable: true
+          description: Appointment package ID
+        AppointmentPackageName:
+          type: string
+          nullable: true
+          description: Appointment package name
+
+    TelehealthInfo:
+      type: object
+      properties:
+        Id:
+          type: string
+        StartUrl:
+          type: string
+          format: uri
+        Invitation:
+          type: string
+        Provider:
+          type: string
+          enum: [IntakeQ, Zoom]
+        InvitationCode:
+          type: string
+
+    Procedure:
+      type: object
+      properties:
+        ProcedureCode:
+          type: string
+        Price:
+          type: number
+          format: float
+        Quantity:
+          type: integer
+        Units:
+          type: integer
+        Modifiers:
+          type: array
+          items:
+            type: string
+
+    AdditionalClient:
+      type: object
+      properties:
+        ClientId:
+          type: integer
+        ClientName:
+          type: string
+        ClientEmail:
+          type: string
+          format: email
+        ClientPhone:
+          type: string
+        IntakeId:
+          type: string
+
+    CustomField:
+      type: object
+      properties:
+        FieldId:
+          type: string
+        Text:
+          type: string
+        Value:
+          type: string
+
+    # Booking Settings Schema
+    BookingSettings:
+      type: object
+      properties:
+        Locations:
+          type: array
+          items:
+            $ref: '#/components/schemas/Location'
+        Services:
+          type: array
+          items:
+            $ref: '#/components/schemas/Service'
+        Practitioners:
+          type: array
+          items:
+            $ref: '#/components/schemas/Practitioner'
+
+    Location:
+      type: object
+      properties:
+        Id:
+          type: string
+        Name:
+          type: string
+        Address:
+          type: string
+
+    Service:
+      type: object
+      properties:
+        Id:
+          type: string
+        Name:
+          type: string
+        Duration:
+          type: integer
+        Price:
+          type: number
+          format: float
+
+    Practitioner:
+      type: object
+      properties:
+        Id:
+          type: string
+        CompleteName:
+          type: string
+        FirstName:
+          type: string
+        LastName:
+          type: string
+        Email:
+          type: string
+          format: email
+        ExternalPractitionerId:
+          type: string
+          nullable: true
+
+    # Client Schemas
+    Client:
+      type: object
+      properties:
+        ClientId:
+          type: integer
+        Name:
+          type: string
+        FirstName:
+          type: string
+        LastName:
+          type: string
+        MiddleName:
+          type: string
+          nullable: true
+        Email:
+          type: string
+          format: email
+        Phone:
+          type: string
+        DateOfBirth:
+          type: integer
+          format: int64
+          nullable: true
+        MaritalStatus:
+          type: string
+          nullable: true
+        Gender:
+          type: string
+          nullable: true
+        Tags:
+          type: array
+          items:
+            type: string
+        Archived:
+          type: boolean
+        HomePhone:
+          type: string
+          nullable: true
+        WorkPhone:
+          type: string
+          nullable: true
+        MobilePhone:
+          type: string
+          nullable: true
+        Address:
+          type: string
+          nullable: true
+        UnitNumber:
+          type: string
+          nullable: true
+        StreetAddress:
+          type: string
+          nullable: true
+        City:
+          type: string
+          nullable: true
+        StateShort:
+          type: string
+          nullable: true
+        Country:
+          type: string
+          nullable: true
+        PostalCode:
+          type: string
+          nullable: true
+        PractitionerId:
+          type: string
+          nullable: true
+        AdditionalInformation:
+          type: string
+          nullable: true
+        BillingType:
+          type: integer
+          enum: [0, 1, 2]
+          description: 0=Unknown, 1=SelfPay, 2=Insurance
+        PrimaryInsuranceCompany:
+          type: string
+          nullable: true
+        PrimaryInsurancePolicyNumber:
+          type: string
+          nullable: true
+        PrimaryInsuranceGroupNumber:
+          type: string
+          nullable: true
+        PrimaryInsuranceHolderName:
+          type: string
+          nullable: true
+        PrimaryInsuranceRelationship:
+          type: string
+          nullable: true
+        PrimaryInsuranceHolderDateOfBirth:
+          type: integer
+          format: int64
+          nullable: true
+        SecondaryInsuranceCompany:
+          type: string
+          nullable: true
+        SecondaryInsurancePolicyNumber:
+          type: string
+          nullable: true
+        SecondaryInsuranceGroupNumber:
+          type: string
+          nullable: true
+        SecondaryInsuranceHolderName:
+          type: string
+          nullable: true
+        SecondaryInsuranceRelationship:
+          type: string
+          nullable: true
+        SecondaryInsuranceHolderDateOfBirth:
+          type: integer
+          format: int64
+          nullable: true
+        DateCreated:
+          type: integer
+          format: int64
+        LastActivityDate:
+          type: integer
+          format: int64
+        LastUpdateDate:
+          type: integer
+          format: int64
+        StripeCustomerId:
+          type: string
+          nullable: true
+        SquareCustomerId:
+          type: string
+          nullable: true
+        ExternalClientId:
+          type: string
+          nullable: true
+        CreditBalance:
+          type: number
+          format: float
+        LastActivityName:
+          type: string
+          nullable: true
+        ParentClientId:
+          type: integer
+          nullable: true
+        LinkedClients:
+          type: array
+          items:
+            $ref: '#/components/schemas/LinkedClient'
+        CustomFields:
+          type: array
+          items:
+            $ref: '#/components/schemas/CustomField'
+
+    LinkedClient:
+      type: object
+      properties:
+        ClientNumber:
+          type: integer
+        RelationshipType:
+          type: integer
+          enum: [0, 1, 2, 3, 4, 5, 6]
+          description: 0=None, 1=Parent, 2=Child, 3=Spouse, 4=Sibling, 5=Other, 6=Partner
+
+    ClientTag:
+      type: object
+      properties:
+        ClientId:
+          type: integer
+        Tag:
+          type: string
+
+    ClientDiagnosis:
+      type: object
+      properties:
+        Code:
+          type: string
+        Description:
+          type: string
+        Date:
+          type: string
+          format: date-time
+        EndDate:
+          type: string
+          format: date-time
+          nullable: true
+        NoteId:
+          type: string
+
+    # Invoice Schemas
+    Invoice:
+      type: object
+      properties:
+        Id:
+          type: string
+        Number:
+          type: integer
+        ClientName:
+          type: string
+        ClientEmail:
+          type: string
+          format: email
+        ClientId:
+          type: string
+        ClientIdNumber:
+          type: integer
+        Status:
+          type: string
+          enum: [Draft, Unpaid, Paid, PastDue, Refunded, Canceled]
+        IssuedDate:
+          type: integer
+          format: int64
+        DueDate:
+          type: integer
+          format: int64
+        DateCreated:
+          type: integer
+          format: int64
+        LastModified:
+          type: integer
+          format: int64
+        CurrencyIso:
+          type: string
+        DiscountAmount:
+          type: number
+          format: float
+        DiscountPercent:
+          type: number
+          format: float
+        DiscountType:
+          type: string
+          enum: [Percentage, Amount]
+        SubTotal:
+          type: number
+          format: float
+        TotalAmount:
+          type: number
+          format: float
+        AmountDue:
+          type: number
+          format: float
+        AmountPaid:
+          type: number
+          format: float
+        NoteToClient:
+          type: string
+          nullable: true
+        AllowTipping:
+          type: boolean
+        TipAmount:
+          type: number
+          format: float
+        Automated:
+          type: boolean
+        CreatedBy:
+          type: string
+        AdditionalEmailRecipients:
+          type: array
+          items:
+            type: string
+            format: email
+        ClientPaymentPlanId:
+          type: string
+          nullable: true
+        ClientPaymentPlanInterval:
+          type: integer
+        Payments:
+          type: array
+          items:
+            $ref: '#/components/schemas/Payment'
+        Items:
+          type: array
+          items:
+            $ref: '#/components/schemas/InvoiceItem'
+        DiagnosisList:
+          type: array
+          items:
+            type: string
+
+    Payment:
+      type: object
+      properties:
+        Date:
+          type: integer
+          format: int64
+        Amount:
+          type: number
+          format: float
+        Currency:
+          type: string
+        Method:
+          type: string
+          enum: [Stripe, CreditCard, Cash, Check, DebitCard, Square, CreditBalance, BankTransfer, Insurance, GiftCard, Other, PracticeQ]
+        ProcessedBy:
+          type: string
+        ProcessedByType:
+          type: string
+          enum: [Client, Provider, Automation]
+        TipAmount:
+          type: number
+          format: float
+        RefundedAmount:
+          type: number
+          format: float
+        AdditionalInfo:
+          type: string
+          nullable: true
+        CardDetails:
+          $ref: '#/components/schemas/CardDetails'
+
+    CardDetails:
+      type: object
+      properties:
+        Brand:
+          type: string
+        LastDigits:
+          type: string
+        ExpirationMonth:
+          type: integer
+        ExpirationYear:
+          type: integer
+        CardId:
+          type: string
+
+    InvoiceItem:
+      type: object
+      properties:
+        AppointmentId:
+          type: string
+          nullable: true
+        ProductId:
+          type: string
+          nullable: true
+        Description:
+          type: string
+        TotalTaxAmount:
+          type: number
+          format: float
+        Units:
+          type: integer
+        Price:
+          type: number
+          format: float
+        Date:
+          type: integer
+          format: int64
+          nullable: true
+        Taxes:
+          type: array
+          items:
+            $ref: '#/components/schemas/Tax'
+        TaxesIncludedInPrice:
+          type: boolean
+        IsCopay:
+          type: boolean
+        TotalAmount:
+          type: number
+          format: float
+        ServiceCode:
+          type: string
+        SubItems:
+          type: array
+          items:
+            $ref: '#/components/schemas/InvoiceSubItem'
+
+    Tax:
+      type: object
+      properties:
+        Name:
+          type: string
+        Percentage:
+          type: number
+          format: float
+
+    InvoiceSubItem:
+      type: object
+      properties:
+        ServiceCode:
+          type: string
+        Price:
+          type: number
+          format: float
+        Units:
+          type: integer
+        Description:
+          type: string
+          nullable: true
+        Date:
+          type: integer
+          format: int64
+          nullable: true
+        Modifiers:
+          type: array
+          items:
+            type: string
+
+    # Note Schemas
+    Note:
+      type: object
+      properties:
+        Id:
+          type: string
+        ClientName:
+          type: string
+        ClientEmail:
+          type: string
+          format: email
+        ClientId:
+          type: integer
+        Status:
+          type: string
+          enum: [locked, unlocked]
+        Date:
+          type: integer
+          format: int64
+        NoteName:
+          type: string
+        PractitionerEmail:
+          type: string
+          format: email
+        PractitionerName:
+          type: string
+        PractitionerId:
+          type: string
+        Questions:
+          type: array
+          items:
+            $ref: '#/components/schemas/Question'
+        AppointmentId:
+          type: string
+          nullable: true
+
+    # Intake/Questionnaire Schemas
+    Intake:
+      type: object
+      properties:
+        Id:
+          type: string
+        ClientName:
+          type: string
+        ClientEmail:
+          type: string
+          format: email
+        ClientId:
+          type: integer
+        Status:
+          type: string
+          enum: [Sent, Partial, Completed, Offline]
+        DateCreated:
+          type: integer
+          format: int64
+        DateSubmitted:
+          type: integer
+          format: int64
+          nullable: true
+        QuestionnaireName:
+          type: string
+        QuestionnaireId:
+          type: string
+        Practitioner:
+          type: string
+          format: email
+        PractitionerName:
+          type: string
+        PractitionerId:
+          type: string
+          nullable: true
+        ExternalClientId:
+          type: string
+          nullable: true
+        Questions:
+          type: array
+          items:
+            $ref: '#/components/schemas/Question'
+        AppointmentId:
+          type: string
+          nullable: true
+        ConsentForms:
+          type: array
+          items:
+            $ref: '#/components/schemas/ConsentForm'
+
+    Question:
+      type: object
+      properties:
+        Id:
+          type: string
+        Text:
+          type: string
+        Answer:
+          type: string
+          nullable: true
+        QuestionType:
+          type: string
+          enum: [OpenQuestion, MultipleChoice, Matrix, Attachment]
+        Rows:
+          type: array
+          items:
+            $ref: '#/components/schemas/QuestionRow'
+        ColumnNames:
+          type: array
+          items:
+            type: string
+        OfficeUse:
+          type: boolean
+        OfficeNote:
+          type: string
+          nullable: true
+        ClientProfileFieldId:
+          type: string
+          nullable: true
+        Attachments:
+          type: array
+          items:
+            $ref: '#/components/schemas/Attachment'
+
+    QuestionRow:
+      type: object
+      properties:
+        Text:
+          type: string
+        Answers:
+          type: array
+          items:
+            type: string
+
+    Attachment:
+      type: object
+      properties:
+        Id:
+          type: string
+        Url:
+          type: string
+          format: uri
+        ContentType:
+          type: string
+        FileName:
+          type: string
+
+    ConsentForm:
+      type: object
+      properties:
+        Id:
+          type: string
+        Name:
+          type: string
+        DocumentType:
+          type: string
+        Signed:
+          type: boolean
+        DateSubmitted:
+          type: integer
+          format: int64
+
+    Questionnaire:
+      type: object
+      properties:
+        Id:
+          type: string
+        Name:
+          type: string
+        Archived:
+          type: boolean
+        Anonymous:
+          type: boolean
+
+    # Request/Response Schemas
+    AppointmentCreateRequest:
+      type: object
+      required:
+        - PractitionerId
+        - ClientId
+        - ServiceId
+        - LocationId
+        - Status
+        - UtcDateTime
+      properties:
+        PractitionerId:
+          type: string
+        ClientId:
+          type: integer
+        ServiceId:
+          type: string
+        LocationId:
+          type: string
+        Status:
+          type: string
+          enum: [Confirmed, WaitingConfirmation]
+        UtcDateTime:
+          type: integer
+          format: int64
+        SendClientEmailNotification:
+          type: boolean
+        ReminderType:
+          type: string
+          enum: [Sms, Email, Voice, OptOut]
+
+    AppointmentUpdateRequest:
+      type: object
+      required:
+        - Id
+        - UtcDateTime
+      properties:
+        Id:
+          type: string
+        ServiceId:
+          type: string
+        LocationId:
+          type: string
+        Status:
+          type: string
+          enum: [Confirmed, WaitingConfirmation]
+        UtcDateTime:
+          type: integer
+          format: int64
+        SendClientEmailNotification:
+          type: boolean
+        ReminderType:
+          type: string
+          enum: [Sms, Email, Voice, OptOut]
+
+    AppointmentCancelRequest:
+      type: object
+      required:
+        - AppointmentId
+      properties:
+        AppointmentId:
+          type: string
+        Reason:
+          type: string
+
+    SendQuestionnaireRequest:
+      type: object
+      required:
+        - QuestionnaireId
+      properties:
+        QuestionnaireId:
+          type: string
+        ClientId:
+          type: integer
+        ClientName:
+          type: string
+        ClientEmail:
+          type: string
+          format: email
+        ClientPhone:
+          type: string
+        PractitionerId:
+          type: string
+        ExternalClientId:
+          type: string
+
+    ResendQuestionnaireRequest:
+      type: object
+      required:
+        - IntakeId
+      properties:
+        IntakeId:
+          type: string
+        DeliveryMethod:
+          type: string
+          enum: [sms, email]
+
+    # Webhook Schemas
+    AppointmentWebhook:
+      type: object
+      properties:
+        EventType:
+          type: string
+          enum: [AppointmentCreated, AppointmentConfirmed, AppointmentRescheduled, AppointmentCanceled, AppointmentDeclined, AppointmentMissed, AppointmentDeleted]
+        ActionPerformedByClient:
+          type: boolean
+        Appointment:
+          $ref: '#/components/schemas/Appointment'
+        ClientId:
+          type: integer
+        PracticeId:
+          type: string
+        ExternalPracticeId:
+          type: string
+        ExternalClientId:
+          type: string
+
+    InvoiceWebhook:
+      type: object
+      properties:
+        EventType:
+          type: string
+          enum: [InvoiceIssued, InvoicePaid, InvoicePaymentPlanChargeFailed, InvoiceAutoChargeFailed, InvoiceCancelled, InvoicePaymentRefunded]
+        ActionPerformedByClient:
+          type: boolean
+        Invoice:
+          $ref: '#/components/schemas/Invoice'
+
+    NoteWebhook:
+      type: object
+      properties:
+        NoteId:
+          type: string
+        Type:
+          type: string
+          enum: [Note Locked]
+        ClientId:
+          type: integer
+
+    IntakeWebhook:
+      type: object
+      properties:
+        IntakeId:
+          type: string
+        Type:
+          type: string
+          enum: [Intake Submitted]
+        ClientId:
+          type: integer
+        ExternalPracticeId:
+          type: string
+        ExternalClientId:
+          type: string
+
+paths:
+  # Appointment Endpoints
+  /appointments:
+    get:
+      tags:
+        - Appointments
+      summary: Query appointments
+      description: Get a list of appointments with optional filtering
+      parameters:
+        - name: client
+          in: query
+          description: Search by client name or email (partial matches supported)
+          schema:
+            type: string
+        - name: startDate
+          in: query
+          description: Return appointments after this date (yyyy-MM-dd)
+          schema:
+            type: string
+            format: date
+        - name: endDate
+          in: query
+          description: Return appointments before this date (yyyy-MM-dd)
+          schema:
+            type: string
+            format: date
+        - name: status
+          in: query
+          description: Filter by appointment status
+          schema:
+            type: string
+            enum: [Confirmed, Canceled, WaitingConfirmation, Declined, Missed]
+        - name: practitionerEmail
+          in: query
+          description: Filter by practitioner email
+          schema:
+            type: string
+            format: email
+        - name: page
+          in: query
+          description: Page number for pagination (max 100 records per page)
+          schema:
+            type: integer
+            minimum: 1
+        - name: updatedSince
+          in: query
+          description: Return appointments updated after this date (yyyy-MM-dd)
+          schema:
+            type: string
+            format: date
+        - name: deletedOnly
+          in: query
+          description: Return only deleted appointments
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Appointment'
+        '401':
+          description: Unauthorized - Invalid API key
+        '429':
+          description: Rate limit exceeded
+
+    post:
+      tags:
+        - Appointments
+      summary: Create an appointment
+      description: Create a new appointment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AppointmentCreateRequest'
+      responses:
+        '201':
+          description: Appointment created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Appointment'
+        '400':
+          description: Bad request - Invalid input
+        '401':
+          description: Unauthorized - Invalid API key
+
+    put:
+      tags:
+        - Appointments
+      summary: Update an appointment
+      description: Update an existing appointment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AppointmentUpdateRequest'
+      responses:
+        '200':
+          description: Appointment updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Appointment'
+        '400':
+          description: Bad request - Invalid input
+        '401':
+          description: Unauthorized - Invalid API key
+        '404':
+          description: Appointment not found
+
+  /appointments/{appointmentId}:
+    get:
+      tags:
+        - Appointments
+      summary: Retrieve an appointment
+      description: Get a single appointment by ID
+      parameters:
+        - name: appointmentId
+          in: path
+          required: true
+          description: The appointment ID
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Appointment'
+        '401':
+          description: Unauthorized - Invalid API key
+        '404':
+          description: Appointment not found
+
+  /appointments/settings:
+    get:
+      tags:
+        - Appointments
+      summary: Retrieve booking settings
+      description: Get list of services, locations, and practitioners
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookingSettings'
+        '401':
+          description: Unauthorized - Invalid API key
+
+  /appointments/cancellation:
+    post:
+      tags:
+        - Appointments
+      summary: Cancel an appointment
+      description: Cancel an existing appointment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AppointmentCancelRequest'
+      responses:
+        '200':
+          description: Appointment canceled successfully
+        '400':
+          description: Bad request - Invalid input
+        '401':
+          description: Unauthorized - Invalid API key
+        '404':
+          description: Appointment not found
+
+  # Client Endpoints
+  /clients:
+    get:
+      tags:
+        - Clients
+      summary: Query clients
+      description: Get a list of clients with optional filtering
+      parameters:
+        - name: search
+          in: query
+          description: Search by client name, email, or ID
+          schema:
+            type: string
+        - name: page
+          in: query
+          description: Page number for pagination (max 100 records per page)
+          schema:
+            type: integer
+            minimum: 1
+        - name: includeProfile
+          in: query
+          description: Include full client profile information
+          schema:
+            type: boolean
+        - name: dateCreatedStart
+          in: query
+          description: Filter by creation date start (yyyy-MM-dd)
+          schema:
+            type: string
+            format: date
+        - name: dateCreatedEnd
+          in: query
+          description: Filter by creation date end (yyyy-MM-dd)
+          schema:
+            type: string
+            format: date
+        - name: dateUpdatedStart
+          in: query
+          description: Filter by update date start (yyyy-MM-dd)
+          schema:
+            type: string
+            format: date
+        - name: dateUpdatedEnd
+          in: query
+          description: Filter by update date end (yyyy-MM-dd)
+          schema:
+            type: string
+            format: date
+        - name: externalClientId
+          in: query
+          description: Filter by external client ID
+          schema:
+            type: string
+        - name: deletedOnly
+          in: query
+          description: Return only deleted clients
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Client'
+        '401':
+          description: Unauthorized - Invalid API key
+
+    post:
+      tags:
+        - Clients
+      summary: Save a client
+      description: Create or update a client
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Client'
+      responses:
+        '200':
+          description: Client saved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Client'
+        '400':
+          description: Bad request - Invalid input
+        '401':
+          description: Unauthorized - Invalid API key
+
+  /clientTags:
+    post:
+      tags:
+        - Clients
+      summary: Add tag to client
+      description: Add a tag to a client
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClientTag'
+      responses:
+        '200':
+          description: Tag added successfully
+        '400':
+          description: Bad request - Invalid input
+        '401':
+          description: Unauthorized - Invalid API key
+
+    delete:
+      tags:
+        - Clients
+      summary: Remove tag from client
+      description: Remove a tag from a client
+      parameters:
+        - name: clientId
+          in: query
+          required: true
+          description: The client ID
+          schema:
+            type: integer
+        - name: tag
+          in: query
+          required: true
+          description: The tag to remove
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Tag removed successfully
+        '401':
+          description: Unauthorized - Invalid API key
+
+  /client/{clientId}/diagnoses:
+    get:
+      tags:
+        - Clients
+      summary: Query client diagnoses
+      description: Get diagnoses for a specific client
+      parameters:
+        - name: clientId
+          in: path
+          required: true
+          description: The client ID
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ClientDiagnosis'
+        '401':
+          description: Unauthorized - Invalid API key
+        '404':
+          description: Client not found
+
+  # Invoice Endpoints
+  /invoices:
+    get:
+      tags:
+        - Invoices
+      summary: Query invoices
+      description: Get a list of invoices with optional filtering
+      parameters:
+        - name: clientId
+          in: query
+          description: Filter by client ID
+          schema:
+            type: integer
+        - name: startDate
+          in: query
+          description: Return invoices after this date (yyyy-MM-dd)
+          schema:
+            type: string
+            format: date
+        - name: endDate
+          in: query
+          description: Return invoices before this date (yyyy-MM-dd)
+          schema:
+            type: string
+            format: date
+        - name: status
+          in: query
+          description: Filter by invoice status
+          schema:
+            type: string
+            enum: [Draft, Scheduled, Unpaid, Paid, PastDue, Refunded, Forgiven, Canceled]
+        - name: practitionerEmail
+          in: query
+          description: Filter by practitioner email
+          schema:
+            type: string
+            format: email
+        - name: number
+          in: query
+          description: Filter by invoice number
+          schema:
+            type: integer
+        - name: page
+          in: query
+          description: Page number for pagination (max 100 records per page)
+          schema:
+            type: integer
+            minimum: 1
+        - name: lastUpdatedStartDate
+          in: query
+          description: Return invoices updated after this date (yyyy-MM-dd)
+          schema:
+            type: string
+            format: date
+        - name: lastUpdatedEndDate
+          in: query
+          description: Return invoices updated before this date (yyyy-MM-dd)
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Invoice'
+        '401':
+          description: Unauthorized - Invalid API key
+
+  /invoices/{invoiceId}:
+    get:
+      tags:
+        - Invoices
+      summary: Retrieve an invoice
+      description: Get a single invoice by ID
+      parameters:
+        - name: invoiceId
+          in: path
+          required: true
+          description: The invoice ID
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Invoice'
+        '401':
+          description: Unauthorized - Invalid API key
+        '404':
+          description: Invoice not found
+
+  # Notes Endpoints
+  /notes/summary:
+    get:
+      tags:
+        - Notes
+      summary: Query treatment notes
+      description: Get treatment note summaries with optional filtering
+      parameters:
+        - name: client
+          in: query
+          description: Search by client name or email (partial matches supported)
+          schema:
+            type: string
+        - name: clientId
+          in: query
+          description: Filter by client ID
+          schema:
+            type: integer
+        - name: status
+          in: query
+          description: Filter by lock status (1=locked, 2=unlocked)
+          schema:
+            type: integer
+            enum: [1, 2]
+        - name: startDate
+          in: query
+          description: Return notes created after this date (yyyy-MM-dd)
+          schema:
+            type: string
+            format: date
+        - name: endDate
+          in: query
+          description: Return notes created before this date (yyyy-MM-dd)
+          schema:
+            type: string
+            format: date
+        - name: page
+          in: query
+          description: Page number for pagination (max 100 records per page)
+          schema:
+            type: integer
+            minimum: 1
+        - name: updatedSince
+          in: query
+          description: Return notes updated after this date (yyyy-MM-dd)
+          schema:
+            type: string
+            format: date
+        - name: deletedOnly
+          in: query
+          description: Return only deleted notes
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Note'
+        '401':
+          description: Unauthorized - Invalid API key
+
+  /notes/{noteId}:
+    get:
+      tags:
+        - Notes
+      summary: Get full treatment note
+      description: Get a complete treatment note in JSON format
+      parameters:
+        - name: noteId
+          in: path
+          required: true
+          description: The note ID
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Note'
+        '401':
+          description: Unauthorized - Invalid API key
+        '404':
+          description: Note not found
+
+  /notes/{noteId}/pdf:
+    get:
+      tags:
+        - Notes
+      summary: Download note PDF
+      description: Download a treatment note as PDF
+      parameters:
+        - name: noteId
+          in: path
+          required: true
+          description: The note ID
+          schema:
+            type: string
+      responses:
+        '200':
+          description: PDF file
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        '401':
+          description: Unauthorized - Invalid API key
+        '404':
+          description: Note not found
+
+  # Questionnaire/Intake Endpoints
+  /intakes/summary:
+    get:
+      tags:
+        - Questionnaires
+      summary: Query intake forms
+      description: Get intake form summaries with optional filtering
+      parameters:
+        - name: client
+          in: query
+          description: Search by client name or email (partial matches supported)
+          schema:
+            type: string
+        - name: startDate
+          in: query
+          description: Return intakes created after this date (yyyy-MM-dd)
+          schema:
+            type: string
+            format: date
+        - name: endDate
+          in: query
+          description: Return intakes created before this date (yyyy-MM-dd)
+          schema:
+            type: string
+            format: date
+        - name: page
+          in: query
+          description: Page number for pagination (max 100 records per page)
+          schema:
+            type: integer
+            minimum: 1
+        - name: all
+          in: query
+          description: Return all intakes regardless of status (default submitted only)
+          schema:
+            type: boolean
+        - name: clientId
+          in: query
+          description: Filter by client ID
+          schema:
+            type: integer
+        - name: externalClientId
+          in: query
+          description: Filter by external client ID
+          schema:
+            type: string
+        - name: updatedSince
+          in: query
+          description: Return intakes updated after this date (yyyy-MM-dd)
+          schema:
+            type: string
+            format: date
+        - name: deletedOnly
+          in: query
+          description: Return only deleted intakes
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Intake'
+        '401':
+          description: Unauthorized - Invalid API key
+
+  /intakes/{intakeId}:
+    get:
+      tags:
+        - Questionnaires
+      summary: Get full intake form
+      description: Get a complete intake form in JSON format
+      parameters:
+        - name: intakeId
+          in: path
+          required: true
+          description: The intake ID
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Intake'
+        '401':
+          description: Unauthorized - Invalid API key
+        '404':
+          description: Intake not found
+
+    post:
+      tags:
+        - Questionnaires
+      summary: Update office use questions
+      description: Update answers to office use questions in an intake form
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Intake'
+      responses:
+        '200':
+          description: Intake updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Intake'
+        '400':
+          description: Bad request - Invalid input
+        '401':
+          description: Unauthorized - Invalid API key
+        '404':
+          description: Intake not found
+
+  /intakes/{intakeId}/pdf:
+    get:
+      tags:
+        - Questionnaires
+      summary: Download intake form PDF
+      description: Download a complete intake package as PDF
+      parameters:
+        - name: intakeId
+          in: path
+          required: true
+          description: The intake ID
+          schema:
+            type: string
+      responses:
+        '200':
+          description: PDF file
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        '401':
+          description: Unauthorized - Invalid API key
+        '404':
+          description: Intake not found
+
+  /intakes/{intakeId}/consent/{consentFormId}/pdf:
+    get:
+      tags:
+        - Questionnaires
+      summary: Download consent form PDF
+      description: Download a specific consent form from an intake package as PDF
+      parameters:
+        - name: intakeId
+          in: path
+          required: true
+          description: The intake ID
+          schema:
+            type: string
+        - name: consentFormId
+          in: path
+          required: true
+          description: The consent form ID
+          schema:
+            type: string
+      responses:
+        '200':
+          description: PDF file
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        '401':
+          description: Unauthorized - Invalid API key
+        '404':
+          description: Intake or consent form not found
+
+  /intakes/send:
+    post:
+      tags:
+        - Questionnaires
+      summary: Send a questionnaire
+      description: Send an intake package to a client
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SendQuestionnaireRequest'
+      responses:
+        '200':
+          description: Questionnaire sent successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Intake'
+        '400':
+          description: Bad request - Invalid input
+        '401':
+          description: Unauthorized - Invalid API key
+
+  /intakes/resend:
+    post:
+      tags:
+        - Questionnaires
+      summary: Resend a questionnaire
+      description: Resend an existing intake package
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResendQuestionnaireRequest'
+      responses:
+        '200':
+          description: Questionnaire resent successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Intake'
+        '400':
+          description: Bad request - Invalid input or form already completed
+        '401':
+          description: Unauthorized - Invalid API key
+        '404':
+          description: Intake not found
+
+  /questionnaires:
+    get:
+      tags:
+        - Questionnaires
+      summary: List questionnaire templates
+      description: Get a list of available questionnaire templates
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Questionnaire'
+        '401':
+          description: Unauthorized - Invalid API key
+
+  /practitioners:
+    get:
+      tags:
+        - Questionnaires
+      summary: List practitioners
+      description: Get a list of practitioners in the account
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Practitioner'
+        '401':
+          description: Unauthorized - Invalid API key
+
+  /attachments/{attachmentId}:
+    get:
+      tags:
+        - Questionnaires
+      summary: Download attachment
+      description: Download an attachment file from a questionnaire
+      parameters:
+        - name: attachmentId
+          in: path
+          required: true
+          description: The attachment ID
+          schema:
+            type: string
+      responses:
+        '200':
+          description: File content
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        '401':
+          description: Unauthorized - Invalid API key
+        '404':
+          description: Attachment not found
+
+# Webhook endpoints are not included as they are configured in the IntakeQ dashboard
+# and receive POST requests from IntakeQ, rather than being called by API consumers
+
+tags:
+  - name: Appointments
+    description: Appointment management endpoints
+  - name: Clients
+    description: Client management endpoints
+  - name: Invoices
+    description: Invoice management endpoints
+  - name: Notes
+    description: Treatment notes endpoints
+  - name: Questionnaires
+    description: Intake forms and questionnaire endpoints
