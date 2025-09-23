@@ -286,9 +286,16 @@ async def main():
     """Main entry point for the server."""
     server = IntakeQMCPServer()
     
+    # Create initialization options with required fields
+    init_options = InitializationOptions(
+        server_name="intakeq-mcp-server",
+        server_version="1.0.0",
+        capabilities={}
+    )
+    
     async with stdio_server() as streams:
         await server.server.run(
-            streams[0], streams[1], InitializationOptions()
+            streams[0], streams[1], init_options
         )
 
 
