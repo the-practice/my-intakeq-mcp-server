@@ -1,303 +1,312 @@
 #!/usr/bin/env python3
-"""IntakeQ MCP Server - Main server module."""
+"""Web server wrapper for IntakeQ MCP Server."""
 
-import asyncio
+import os
 import json
-from typing import Any, Dict, Sequence
-from mcp.server import Server
-from mcp.server.models import InitializationOptions
-from mcp.server.stdio import stdio_server
-from mcp.types import Tool, TextContent
+import logging
+from typing import Any, Dict, Optional
+from fastapi import FastAPI, HTTPException, Header, Request
+from fastapi.responses import JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
+import uvicorn
+
+# Import handlers
 from handlers.appointments import AppointmentHandler
 from handlers.clients import ClientHandler
 from handlers.invoices import InvoiceHandler
 from handlers.notes import NotesHandler
 from handlers.questionnaires import QuestionnaireHandler
 
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-class IntakeQMCPServer:
-    """Main MCP server class for IntakeQ integration."""
-    
-    def __init__(self):
-        """Initialize the server and handlers."""
-        self.server = Server("intakeq-mcp-server")
-        self.base_url = "https://intakeq.com/api/v1"
-        
-        # Initialize handlers
-        self.appointment_handler = AppointmentHandler(self.base_url)
-        self.client_handler = ClientHandler(self.base_url)
-        self.invoice_handler = InvoiceHandler(self.base_url)
-        self.notes_handler = NotesHandler(self.base_url)
-        self.questionnaire_handler = QuestionnaireHandler(self.base_url)
-        
-        self.setup_tools()
-    
-    def setup_tools(self):
-        """Register all available tools with the MCP server."""
-        
-        @self.server.list_tools()
-        async def handle_list_tools() -> list[Tool]:
-            """List all available tools."""
-            return [
-                # Appointment tools
-                Tool(
-                    name="get_appointments",
-                    description="Query appointments with optional filtering",
-                    inputSchema={
-                        "type": "object",
-                        "properties": {
-                            "api_key": {"type": "string", "description": "IntakeQ API key"},
-                            "client": {"type": "string", "description": "Search by client name or email"},
-                            "startDate": {"type": "string", "description": "Start date (yyyy-MM-dd)"},
-                            "endDate": {"type": "string", "description": "End date (yyyy-MM-dd)"},
-                            "status": {"type": "string", "enum": ["Confirmed", "Canceled", "WaitingConfirmation", "Declined", "Missed"]},
-                            "practitionerEmail": {"type": "string", "description": "Filter by practitioner email"},
-                            "page": {"type": "integer", "description": "Page number for pagination"}
-                        },
-                        "required": ["api_key"]
-                    }
-                ),
-                Tool(
-                    name="get_appointment",
-                    description="Retrieve a single appointment by ID",
-                    inputSchema={
-                        "type": "object",
-                        "properties": {
-                            "api_key": {"type": "string", "description": "IntakeQ API key"},
-                            "appointment_id": {"type": "string", "description": "Appointment ID"}
-                        },
-                        "required": ["api_key", "appointment_id"]
-                    }
-                ),
-                Tool(
-                    name="create_appointment",
-                    description="Create a new appointment",
-                    inputSchema={
-                        "type": "object",
-                        "properties": {
-                            "api_key": {"type": "string", "description": "IntakeQ API key"},
-                            "practitioner_id": {"type": "string", "description": "Practitioner ID"},
-                            "client_id": {"type": "integer", "description": "Client ID"},
-                            "service_id": {"type": "string", "description": "Service ID"},
-                            "location_id": {"type": "string", "description": "Location ID"},
-                            "status": {"type": "string", "enum": ["Confirmed", "WaitingConfirmation"]},
-                            "utc_datetime": {"type": "integer", "description": "Unix timestamp"},
-                            "send_email_notification": {"type": "boolean", "default": True},
-                            "reminder_type": {"type": "string", "enum": ["Sms", "Email", "Voice", "OptOut"]}
-                        },
-                        "required": ["api_key", "practitioner_id", "client_id", "service_id", "location_id", "status", "utc_datetime"]
-                    }
-                ),
-                Tool(
-                    name="get_booking_settings",
-                    description="Get booking settings (services, locations, practitioners)",
-                    inputSchema={
-                        "type": "object",
-                        "properties": {
-                            "api_key": {"type": "string", "description": "IntakeQ API key"}
-                        },
-                        "required": ["api_key"]
-                    }
-                ),
-                # Client tools
-                Tool(
-                    name="get_clients",
-                    description="Query clients with optional filtering",
-                    inputSchema={
-                        "type": "object",
-                        "properties": {
-                            "api_key": {"type": "string", "description": "IntakeQ API key"},
-                            "search": {"type": "string", "description": "Search by name, email, or ID"},
-                            "page": {"type": "integer", "description": "Page number"},
-                            "includeProfile": {"type": "boolean", "description": "Include full profile"}
-                        },
-                        "required": ["api_key"]
-                    }
-                ),
-                Tool(
-                    name="create_client",
-                    description="Create or update a client",
-                    inputSchema={
-                        "type": "object",
-                        "properties": {
-                            "api_key": {"type": "string", "description": "IntakeQ API key"},
-                            "client_data": {"type": "object", "description": "Client information"}
-                        },
-                        "required": ["api_key", "client_data"]
-                    }
-                ),
-                # Invoice tools
-                Tool(
-                    name="get_invoices",
-                    description="Query invoices with optional filtering",
-                    inputSchema={
-                        "type": "object",
-                        "properties": {
-                            "api_key": {"type": "string", "description": "IntakeQ API key"},
-                            "client_id": {"type": "integer", "description": "Filter by client ID"},
-                            "status": {"type": "string", "enum": ["Draft", "Unpaid", "Paid", "PastDue", "Refunded", "Canceled"]},
-                            "startDate": {"type": "string", "description": "Start date (yyyy-MM-dd)"},
-                            "endDate": {"type": "string", "description": "End date (yyyy-MM-dd)"}
-                        },
-                        "required": ["api_key"]
-                    }
-                ),
-                Tool(
-                    name="get_invoice",
-                    description="Retrieve a single invoice by ID",
-                    inputSchema={
-                        "type": "object",
-                        "properties": {
-                            "api_key": {"type": "string", "description": "IntakeQ API key"},
-                            "invoice_id": {"type": "string", "description": "Invoice ID"}
-                        },
-                        "required": ["api_key", "invoice_id"]
-                    }
-                ),
-                # Notes tools
-                Tool(
-                    name="get_notes",
-                    description="Query treatment notes summaries",
-                    inputSchema={
-                        "type": "object",
-                        "properties": {
-                            "api_key": {"type": "string", "description": "IntakeQ API key"},
-                            "client": {"type": "string", "description": "Search by client name or email"},
-                            "client_id": {"type": "integer", "description": "Filter by client ID"},
-                            "status": {"type": "integer", "enum": [1, 2], "description": "1=locked, 2=unlocked"}
-                        },
-                        "required": ["api_key"]
-                    }
-                ),
-                Tool(
-                    name="get_note",
-                    description="Get full treatment note by ID",
-                    inputSchema={
-                        "type": "object",
-                        "properties": {
-                            "api_key": {"type": "string", "description": "IntakeQ API key"},
-                            "note_id": {"type": "string", "description": "Note ID"}
-                        },
-                        "required": ["api_key", "note_id"]
-                    }
-                ),
-                # Questionnaire tools
-                Tool(
-                    name="get_questionnaire_templates",
-                    description="Get available questionnaire templates",
-                    inputSchema={
-                        "type": "object",
-                        "properties": {
-                            "api_key": {"type": "string", "description": "IntakeQ API key"}
-                        },
-                        "required": ["api_key"]
-                    }
-                ),
-                Tool(
-                    name="send_questionnaire",
-                    description="Send a questionnaire to a client",
-                    inputSchema={
-                        "type": "object",
-                        "properties": {
-                            "api_key": {"type": "string", "description": "IntakeQ API key"},
-                            "questionnaire_id": {"type": "string", "description": "Questionnaire template ID"},
-                            "client_id": {"type": "integer", "description": "Client ID"},
-                            "client_name": {"type": "string", "description": "Client name"},
-                            "client_email": {"type": "string", "description": "Client email"},
-                            "practitioner_id": {"type": "string", "description": "Practitioner ID"}
-                        },
-                        "required": ["api_key", "questionnaire_id"]
-                    }
-                )
-            ]
-        
-        @self.server.call_tool()
-        async def handle_call_tool(name: str, arguments: dict) -> Sequence[TextContent]:
-            """Handle tool calls."""
-            try:
-                result = await self.route_tool_call(name, arguments)
-                return [TextContent(type="text", text=json.dumps(result, indent=2))]
-            except Exception as e:
-                error_msg = f"Error calling tool {name}: {str(e)}"
-                return [TextContent(type="text", text=error_msg)]
-    
-    async def route_tool_call(self, tool_name: str, arguments: Dict[str, Any]) -> Any:
-        """Route tool calls to appropriate handlers."""
-        api_key = arguments.get('api_key')
-        if not api_key:
-            raise ValueError("API key is required")
-        
-        # Appointment tools
-        if tool_name == "get_appointments":
-            return await self.appointment_handler.get_appointments(api_key, arguments)
-        elif tool_name == "get_appointment":
-            return await self.appointment_handler.get_appointment(api_key, arguments['appointment_id'])
-        elif tool_name == "create_appointment":
-            appointment_data = {
-                'PractitionerId': arguments['practitioner_id'],
-                'ClientId': arguments['client_id'],
-                'ServiceId': arguments['service_id'],
-                'LocationId': arguments['location_id'],
-                'Status': arguments['status'],
-                'UtcDateTime': arguments['utc_datetime'],
-                'SendClientEmailNotification': arguments.get('send_email_notification', True),
-                'ReminderType': arguments.get('reminder_type', 'Email')
-            }
-            return await self.appointment_handler.create_appointment(api_key, appointment_data)
-        elif tool_name == "get_booking_settings":
-            return await self.appointment_handler.get_booking_settings(api_key)
-        
-        # Client tools
-        elif tool_name == "get_clients":
-            return await self.client_handler.get_clients(api_key, arguments)
-        elif tool_name == "create_client":
-            return await self.client_handler.create_or_update_client(api_key, arguments['client_data'])
-        
-        # Invoice tools
-        elif tool_name == "get_invoices":
-            return await self.invoice_handler.get_invoices(api_key, arguments)
-        elif tool_name == "get_invoice":
-            return await self.invoice_handler.get_invoice(api_key, arguments['invoice_id'])
-        
-        # Notes tools
-        elif tool_name == "get_notes":
-            return await self.notes_handler.get_notes_summary(api_key, arguments)
-        elif tool_name == "get_note":
-            return await self.notes_handler.get_note(api_key, arguments['note_id'])
-        
-        # Questionnaire tools
-        elif tool_name == "get_questionnaire_templates":
-            return await self.questionnaire_handler.get_questionnaire_templates(api_key)
-        elif tool_name == "send_questionnaire":
-            questionnaire_data = {
-                'QuestionnaireId': arguments['questionnaire_id'],
-                'ClientId': arguments.get('client_id'),
-                'ClientName': arguments.get('client_name'),
-                'ClientEmail': arguments.get('client_email'),
-                'PractitionerId': arguments.get('practitioner_id')
-            }
-            return await self.questionnaire_handler.send_questionnaire(api_key, questionnaire_data)
-        
-        else:
-            raise ValueError(f"Unknown tool: {tool_name}")
+# Create FastAPI app
+app = FastAPI(
+    title="IntakeQ MCP Server",
+    description="MCP Server for IntakeQ API integration",
+    version="1.0.0"
+)
+
+# Configure CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Configure this based on your needs
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Initialize handlers
+BASE_URL = "https://intakeq.com/api/v1"
+appointment_handler = AppointmentHandler(BASE_URL)
+client_handler = ClientHandler(BASE_URL)
+invoice_handler = InvoiceHandler(BASE_URL)
+notes_handler = NotesHandler(BASE_URL)
+questionnaire_handler = QuestionnaireHandler(BASE_URL)
 
 
-async def main():
-    """Main entry point for the server."""
-    server = IntakeQMCPServer()
-    
-    # Create initialization options with required fields
-    init_options = InitializationOptions(
-        server_name="intakeq-mcp-server",
-        server_version="1.0.0",
-        capabilities={}
+@app.get("/")
+async def root():
+    """Root endpoint - server info."""
+    return {
+        "name": "intakeq-mcp-server",
+        "version": "1.0.0",
+        "status": "running",
+        "endpoints": {
+            "appointments": "/appointments",
+            "clients": "/clients",
+            "invoices": "/invoices",
+            "notes": "/notes",
+            "questionnaires": "/questionnaires"
+        }
+    }
+
+
+@app.get("/health")
+async def health_check():
+    """Health check endpoint."""
+    return {"status": "healthy"}
+
+
+# Appointment endpoints
+@app.get("/appointments")
+async def get_appointments(
+    x_auth_key: str = Header(..., description="IntakeQ API key"),
+    client: Optional[str] = None,
+    startDate: Optional[str] = None,
+    endDate: Optional[str] = None,
+    status: Optional[str] = None,
+    practitionerEmail: Optional[str] = None,
+    page: Optional[int] = None
+):
+    """Query appointments with optional filtering."""
+    try:
+        params = {
+            "client": client,
+            "startDate": startDate,
+            "endDate": endDate,
+            "status": status,
+            "practitionerEmail": practitionerEmail,
+            "page": page
+        }
+        # Remove None values
+        params = {k: v for k, v in params.items() if v is not None}
+        
+        result = await appointment_handler.get_appointments(x_auth_key, params)
+        return result
+    except Exception as e:
+        logger.error(f"Error getting appointments: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/appointments/{appointment_id}")
+async def get_appointment(
+    appointment_id: str,
+    x_auth_key: str = Header(..., description="IntakeQ API key")
+):
+    """Retrieve a single appointment by ID."""
+    try:
+        result = await appointment_handler.get_appointment(x_auth_key, appointment_id)
+        return result
+    except Exception as e:
+        logger.error(f"Error getting appointment: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/appointments")
+async def create_appointment(
+    request: Request,
+    x_auth_key: str = Header(..., description="IntakeQ API key")
+):
+    """Create a new appointment."""
+    try:
+        data = await request.json()
+        result = await appointment_handler.create_appointment(x_auth_key, data)
+        return result
+    except Exception as e:
+        logger.error(f"Error creating appointment: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/appointments/settings")
+async def get_booking_settings(
+    x_auth_key: str = Header(..., description="IntakeQ API key")
+):
+    """Get booking settings (services, locations, practitioners)."""
+    try:
+        result = await appointment_handler.get_booking_settings(x_auth_key)
+        return result
+    except Exception as e:
+        logger.error(f"Error getting booking settings: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# Client endpoints
+@app.get("/clients")
+async def get_clients(
+    x_auth_key: str = Header(..., description="IntakeQ API key"),
+    search: Optional[str] = None,
+    page: Optional[int] = None,
+    includeProfile: Optional[bool] = None
+):
+    """Query clients with optional filtering."""
+    try:
+        params = {
+            "search": search,
+            "page": page,
+            "includeProfile": includeProfile
+        }
+        params = {k: v for k, v in params.items() if v is not None}
+        
+        result = await client_handler.get_clients(x_auth_key, params)
+        return result
+    except Exception as e:
+        logger.error(f"Error getting clients: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/clients")
+async def create_client(
+    request: Request,
+    x_auth_key: str = Header(..., description="IntakeQ API key")
+):
+    """Create or update a client."""
+    try:
+        data = await request.json()
+        result = await client_handler.create_or_update_client(x_auth_key, data)
+        return result
+    except Exception as e:
+        logger.error(f"Error creating client: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# Invoice endpoints
+@app.get("/invoices")
+async def get_invoices(
+    x_auth_key: str = Header(..., description="IntakeQ API key"),
+    clientId: Optional[int] = None,
+    status: Optional[str] = None,
+    startDate: Optional[str] = None,
+    endDate: Optional[str] = None
+):
+    """Query invoices with optional filtering."""
+    try:
+        params = {
+            "clientId": clientId,
+            "status": status,
+            "startDate": startDate,
+            "endDate": endDate
+        }
+        params = {k: v for k, v in params.items() if v is not None}
+        
+        result = await invoice_handler.get_invoices(x_auth_key, params)
+        return result
+    except Exception as e:
+        logger.error(f"Error getting invoices: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/invoices/{invoice_id}")
+async def get_invoice(
+    invoice_id: str,
+    x_auth_key: str = Header(..., description="IntakeQ API key")
+):
+    """Retrieve a single invoice by ID."""
+    try:
+        result = await invoice_handler.get_invoice(x_auth_key, invoice_id)
+        return result
+    except Exception as e:
+        logger.error(f"Error getting invoice: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# Notes endpoints
+@app.get("/notes")
+async def get_notes(
+    x_auth_key: str = Header(..., description="IntakeQ API key"),
+    client: Optional[str] = None,
+    clientId: Optional[int] = None,
+    status: Optional[int] = None
+):
+    """Query treatment notes summaries."""
+    try:
+        params = {
+            "client": client,
+            "clientId": clientId,
+            "status": status
+        }
+        params = {k: v for k, v in params.items() if v is not None}
+        
+        result = await notes_handler.get_notes_summary(x_auth_key, params)
+        return result
+    except Exception as e:
+        logger.error(f"Error getting notes: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/notes/{note_id}")
+async def get_note(
+    note_id: str,
+    x_auth_key: str = Header(..., description="IntakeQ API key")
+):
+    """Get full treatment note by ID."""
+    try:
+        result = await notes_handler.get_note(x_auth_key, note_id)
+        return result
+    except Exception as e:
+        logger.error(f"Error getting note: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# Questionnaire endpoints
+@app.get("/questionnaires/templates")
+async def get_questionnaire_templates(
+    x_auth_key: str = Header(..., description="IntakeQ API key")
+):
+    """Get available questionnaire templates."""
+    try:
+        result = await questionnaire_handler.get_questionnaire_templates(x_auth_key)
+        return result
+    except Exception as e:
+        logger.error(f"Error getting questionnaire templates: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/questionnaires/send")
+async def send_questionnaire(
+    request: Request,
+    x_auth_key: str = Header(..., description="IntakeQ API key")
+):
+    """Send a questionnaire to a client."""
+    try:
+        data = await request.json()
+        result = await questionnaire_handler.send_questionnaire(x_auth_key, data)
+        return result
+    except Exception as e:
+        logger.error(f"Error sending questionnaire: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# Error handler
+@app.exception_handler(Exception)
+async def general_exception_handler(request: Request, exc: Exception):
+    """General exception handler."""
+    logger.error(f"Unhandled exception: {str(exc)}")
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Internal server error"}
     )
-    
-    async with stdio_server() as streams:
-        await server.server.run(
-            streams[0], streams[1], init_options
-        )
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    # Get port from environment variable (Render sets this)
+    port = int(os.environ.get("PORT", 8000))
+    
+    # Run the server
+    uvicorn.run(
+        "web_server:app",
+        host="0.0.0.0",
+        port=port,
+        log_level="info"
+    )
