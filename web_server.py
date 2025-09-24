@@ -123,6 +123,10 @@ async def health_check():
         "auth_configured": bool(VAPI_AUTH_TOKEN)
     }
 
+# Simple unauthenticated test tool for MCP validation
+@app.get("/mcp-test")
+async def mcp_test():
+    return {"ok": True, "message": "MCP tool surface working"}
 
 # Appointment endpoints
 @app.get("/appointments")
