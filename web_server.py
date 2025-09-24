@@ -62,7 +62,7 @@ questionnaire_handler = QuestionnaireHandler(BASE_URL)
 
 # Mount MCP transport at /mcp (exposes /mcp, /mcp/sse, etc.)
 mcp = FastApiMCP(app)
-mcp.mount_http()
+mcp.mount()
 
 
 async def verify_vapi_token(credentials: HTTPAuthorizationCredentials = Depends(security)) -> bool:
