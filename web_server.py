@@ -17,6 +17,7 @@ from handlers.clients import ClientHandler
 from handlers.invoices import InvoiceHandler
 from handlers.notes import NotesHandler
 from handlers.questionnaires import QuestionnaireHandler
+from fastapi_mcp import FastApiMCP
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -59,6 +60,10 @@ invoice_handler = InvoiceHandler(BASE_URL)
 notes_handler = NotesHandler(BASE_URL)
 questionnaire_handler = QuestionnaireHandler(BASE_URL)
 
+# Mount MCP transport at /mcp (exposes /mcp, /mcp/sse, etc.)
+mcp = FastApiMCP(app)
+mcp.mount_http()
+
 
 async def verify_vapi_token(credentials: HTTPAuthorizationCredentials = Depends(security)) -> bool:
     """Verify the VAPI authentication token."""
@@ -94,6 +99,11 @@ async def root():
         "version": "1.0.0",
         "status": "running",
         "authentication": "Bearer token required" if VAPI_AUTH_TOKEN else "Disabled (no token configured)",
+        "mcp": {
+            "base": "/mcp",
+            "sse": "/mcp/sse",
+            "messages": "/mcp/messages"
+        },
         "endpoints": {
             "appointments": "/appointments",
             "clients": "/clients",
